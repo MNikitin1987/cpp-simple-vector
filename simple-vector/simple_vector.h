@@ -105,11 +105,7 @@ public:
         }
         else {      
             ArrayPtr<Type> temp(new_size);
-            for (size_t i = 0; i < size_; ++i) {
-                temp[i] = std::move(items_[i]);
-                // в данном случае использование Reserve вызывает ошибки, связанные с копированием. Прошу согласовать в таком виде.
-            }
-
+            std::move(items_.Get(), items_.Get() + size_, temp.Get());
             std::generate(temp.Get() + size_, temp.Get() + new_size, [](){return Type();});
             items_.swap(temp);    
             size_ = new_size;
