@@ -29,9 +29,7 @@ public:
     ArrayPtr& operator=(const ArrayPtr&) = delete;
 
     [[nodiscard]] Type* Release() noexcept {
-        const auto temp = raw_ptr_;
-        raw_ptr_ = nullptr;
-        return temp;
+        return std::exchange(raw_ptr_, nullptr); 
     }
 
     Type& operator[](size_t index) noexcept {
@@ -43,8 +41,7 @@ public:
     }
 
     explicit operator bool() const {
-        if (raw_ptr_ == nullptr) return false;
-        else return true;
+        return raw_ptr_ != nullptr;
     }
 
     Type* Get() const noexcept {
