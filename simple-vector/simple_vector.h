@@ -33,12 +33,12 @@ public:
     SimpleVector() noexcept = default;
     
     SimpleVector(ReserveProxyObj cap)
-    :items_(nullptr), size_(0), capacity_(cap.Get()) {
+    :items_(cap.Get()), size_(0), capacity_(cap.Get()) {
     }
 
     explicit SimpleVector(size_t size)
     :items_(size), size_(size), capacity_(size) {
-        std::generate(items_.Get(), items_.Get() + size, [](){return Type();});
+        std::generate(items_.Get(), items_.Get() + size, []{return Type();});
     }
 
     SimpleVector(size_t size, const Type& value)
@@ -47,7 +47,7 @@ public:
     }
 
     SimpleVector(std::initializer_list<Type> init) 
-    :items_(init.size()), size_(init.size()), capacity_(init.size()) {
+    :items_(), size_(init.size()), capacity_(init.size()) {
         ArrayPtr<Type> temp(init.size());
         std::copy(init.begin(), init.end(), temp.Get());
         items_.swap(temp);
@@ -62,7 +62,7 @@ public:
     }
 
     bool IsEmpty() const noexcept {
-        return size_ == 0/* ? true : false*/;
+        return size_ == 0;
     }
 
     Type& operator[](size_t index) noexcept {
@@ -100,16 +100,13 @@ public:
             size_ = new_size;
         }
         else if (new_size <= capacity_) {
-            std::generate(items_.Get() + size_, items_.Get() + new_size, [](){return Type();});
+            std::generate(items_.Get() + size_, items_.Get() + new_size, []{return Type();});
             size_ = new_size;
         }
         else {      
-            ArrayPtr<Type> temp(new_size);
-            std::move(items_.Get(), items_.Get() + size_, temp.Get());
-            std::generate(temp.Get() + size_, temp.Get() + new_size, [](){return Type();});
-            items_.swap(temp);    
+            Reserve(new_size);
+            std::generate(begin() + size_, begin() + new_size, []{return Type();}); 
             size_ = new_size;
-            capacity_ = new_size;
         }   
     }
     
@@ -159,16 +156,15 @@ public:
 
     SimpleVector& operator=(const SimpleVector& rhs) {
         if (this != &rhs) {
-            Resize(rhs.GetSize());
-            auto temp = rhs;
-            items_.swap(temp.items_);
+            SimpleVector temp(rhs);
+            swap(temp);
         }
         return *this;
     }
 
 	void PushBack(const Type& item) {
         if (capacity_ == 0 || capacity_ == size_) {
-            Reserve(std::max(static_cast<size_t>(1), capacity_ * 2));
+            Reserve(std::max<size_t>(1, capacity_ * 2));
         }
         *end() = item;
         ++size_;
@@ -176,16 +172,14 @@ public:
 
     void PushBack(Type&& item) {
         if (capacity_ == 0 || capacity_ == size_) {
-            Reserve(std::max(static_cast<size_t>(1), capacity_ * 2));
+            Reserve(std::max<size_t>(1, capacity_ * 2));
         }
         *end() = std::move(item);
         ++size_;
     }
         
     Iterator Insert(Iterator pos, const Type& value) {
-        if (pos < begin() || pos > end()) {
-            return nullptr;
-        }
+        assert(pos >= begin() && pos <= end());
         size_t num = pos - begin();
         if (capacity_ == 0 || capacity_ == size_) {
             Reserve(std::max<size_t>(1, capacity_ * 2));
@@ -198,9 +192,7 @@ public:
     }
     
     Iterator Insert(Iterator pos, Type&& value) {
-        if (pos < begin() || pos > end()) {
-            return nullptr;
-        }
+        assert(pos >= begin() && pos <= end());
         size_t num = pos - begin();
         if (capacity_ == 0 || capacity_ == size_) {
             Reserve(std::max<size_t>(1, capacity_ * 2));
@@ -214,16 +206,12 @@ public:
     }
     
     void PopBack() noexcept {
-        if (size_) {
-            --size_;
-        }
-        else std::cerr << "No elements";
+        assert(size_);
+        --size_;
     }
 
     Iterator Erase(ConstIterator pos) {
-        if (pos < begin() || pos > end()) {
-            return nullptr;
-        }
+        assert(pos >= begin() && pos <= end());
         size_t pos_n = std::distance(begin(), const_cast<Iterator>(pos));
         for (size_t i = pos_n + 1; i < size_; ++i) {
             items_[i - 1] = std::move(items_[i]);
